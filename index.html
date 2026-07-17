@@ -12,7 +12,7 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 #help{position:fixed;left:12px;top:12px;padding:10px 13px;border:1px solid #ffffff2a;border-radius:14px;background:#050812bb;color:#fff;font-size:13px;line-height:1.55;backdrop-filter:blur(10px);z-index:4}
 #touch{position:fixed;inset:0;pointer-events:none;z-index:5}
 .pad,.actions{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));display:flex;gap:12px;pointer-events:auto}
-.pad{left:18px}.actions{right:18px}
+.pad{left:18px;display:grid;grid-template-columns:repeat(2,68px)}.actions{right:18px}
 .btn{width:68px;height:68px;border-radius:50%;border:1px solid #ffffff55;background:#0009;color:#fff;font-size:27px;font-weight:900;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:none;box-shadow:0 8px 24px #0009}
 .btn.action{width:80px;height:80px;font-size:18px}
 #result{display:none;position:fixed;inset:0;z-index:8;align-items:center;justify-content:center;background:#050812b8}
@@ -29,7 +29,7 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
   .btn{width:60px;height:60px;font-size:24px}
   .btn.action{width:70px;height:70px;font-size:16px}
   .pad,.actions{gap:8px}
-  .pad{left:10px}.actions{right:10px}
+  .pad{left:10px;grid-template-columns:repeat(2,60px)}.actions{right:10px}
 }
 
 </style>
@@ -38,7 +38,9 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 <canvas id="game"></canvas>
 
 <div id="help">
-1P：A / D 移動・W ジャンプ・K 通常攻撃・L 必殺技<br>
+1P：A / D 移動・W ジャンプ・S しゃがみ方向<br>
+K 通常攻撃・L 必殺技<br>
+L：通常必殺　A/D＋L：横必殺　W＋L：上必殺　S＋L：下必殺（カウンター）<br>
 R：リスタート
 </div>
 
@@ -47,6 +49,7 @@ R：リスタート
     <div class="btn" data-key="a">◀</div>
     <div class="btn" data-key="d">▶</div>
     <div class="btn" data-key="w">▲</div>
+    <div class="btn" data-key="s">▼</div>
   </div>
   <div class="actions">
     <div class="btn action" data-key="k">攻撃</div>
@@ -197,13 +200,13 @@ class Fighter{
     this.x=this.spawnX; this.y=H*.28; this.vx=0; this.vy=0;
     this.w=56; this.h=74; this.facing=this.baseFacing;
     this.onGround=false; this.jumps=2; this.attackT=0; this.cool=0;
-    this.specialCool=0; this.inv=100; this.stun=0; this.slow=0;
+    this.specialCool=0; this.inv=100; this.stun=0; this.slow=0; this.counterT=0; this.counterFlash=0;
   }
   input(op){
     if(this.cpu){
       const dx=op.x-this.x;
       return {
-        left:dx<-48, right:dx>48,
+        left:dx<-48, right:dx>48, down:false,
         jump:(this.y>op.y+70)||(this.onGround&&Math.random()<.006),
         attack:Math.abs(dx)<84&&Math.abs(op.y-this.y)<85&&Math.random()<.11,
         special:Math.abs(dx)>105&&Math.abs(dx)<390&&Math.random()<.017
@@ -211,7 +214,7 @@ class Fighter{
     }
     const c=this.controls;
     return {
-      left:keys[c.left], right:keys[c.right],
+      left:keys[c.left], right:keys[c.right], down:keys[c.down],
       jump:consume(c.jump), attack:consume(c.attack), special:consume(c.special)
     };
   }
@@ -231,7 +234,14 @@ class Fighter{
       burst(this.x+28,this.y+this.h,9,'#ffffff');
     }
     if(i.attack&&this.cool<=0){ this.attackT=13; this.cool=23; }
-    if(i.special&&this.specialCool<=0){ this.useSpecial(); this.specialCool=90; }
+    if(i.special&&this.specialCool<=0){
+      let dir='neutral';
+      if(i.jump||keys[this.controls.jump]) dir='up';
+      else if(i.down) dir='down';
+      else if(i.left||i.right) dir='side';
+      this.useSpecial(dir);
+      this.specialCool = dir==='down' ? 105 : 90;
+    }
 
     if(this.attackT>0){
       this.attackT--;
@@ -241,6 +251,8 @@ class Fighter{
     if(this.specialCool>0)this.specialCool--;
     if(this.inv>0)this.inv--;
     if(this.slow>0)this.slow--;
+    if(this.counterT>0)this.counterT--;
+    if(this.counterFlash>0)this.counterFlash--;
 
     this.physics();
     if(this.x<-190||this.x>W+190||this.y>H+210||this.y<-280)this.ko(op);
@@ -257,13 +269,55 @@ class Fighter{
     const reach=58;
     const hb={x:this.facing>0?this.x+this.w:this.x-reach,y:this.y+13,w:reach,h:48};
     if(overlap(hb,op)&&op.inv<=0){
+      if(op.counterT>0){
+        op.counterT=0;
+        op.counterFlash=20;
+        this.percent+=16*op.char.power;
+        const counterForce=9+this.percent*.085;
+        this.vx=-this.facing*counterForce;
+        this.vy=-7-this.percent*.02;
+        this.stun=14;
+        shake=12;
+        burst(this.x+28,this.y+35,34,op.char.accent);
+        return;
+      }
       op.percent+=11*this.char.power;
       const force=6.5+op.percent*.075*this.char.power;
       op.vx=this.facing*force; op.vy=-5.3-op.percent*.025; op.stun=8;
       shake=8; burst(op.x+28,op.y+35,24,this.char.accent);
     }
   }
-  useSpecial(){
+  useSpecial(dir='neutral'){
+    if(dir==='side'){
+      // Horizontal moving attack
+      this.vx=this.facing*(13.5+this.char.speed*3);
+      this.vy=-1.0;
+      this.attackT=14;
+      this.stun=0;
+      burst(this.x+28,this.y+36,24,this.char.color);
+      return;
+    }
+
+    if(dir==='up'){
+      // Rising attack for recovery
+      this.vy=-(15.5+this.char.jump*.12);
+      this.vx=this.facing*3.4;
+      this.attackT=16;
+      this.jumps=0;
+      burst(this.x+28,this.y+60,28,this.char.accent);
+      return;
+    }
+
+    if(dir==='down'){
+      // Counter stance
+      this.counterT=38;
+      this.counterFlash=12;
+      this.vx*=.25;
+      burst(this.x+28,this.y+37,18,'#ffffff');
+      return;
+    }
+
+    // Neutral special
     const type=this.char.special;
     if(type==='fire'){
       projectiles.push({type,owner:this,x:this.x+28+this.facing*32,y:this.y+31,vx:this.facing*8.5,vy:0,r:17,life:115,color:'#ff7935',damage:19,power:1.26});
@@ -294,13 +348,19 @@ class Fighter{
       : 0;
     const bodyLean = this.attackT > 0 ? this.facing * swing * 2.2 : 0;
 
-    // elemental aura
-    ctx.globalAlpha*=.35;
-    glowOrb(28,37,28+Math.sin(time*.08+this.charIndex)*3,this.char.color);
-    ctx.globalAlpha=1;
-
+    // Soft silhouette glow instead of a large circular aura
     ctx.save();
     ctx.translate(bodyLean,0);
+    ctx.globalAlpha=.18;
+    ctx.shadowColor=this.char.color;
+    ctx.shadowBlur=18;
+    ctx.fillStyle=this.char.color;
+    roundRect(7,10,42,56,15);
+    ctx.beginPath();
+    ctx.arc(28,13,16,0,Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.globalAlpha=1;
 
     // cape / back ornament
     ctx.fillStyle=this.char.dark;
@@ -412,6 +472,20 @@ class Fighter{
     ctx.restore();
 
     // attack arc/trail
+    if(this.counterT>0||this.counterFlash>0){
+      ctx.save();
+      const pulse=1+Math.sin(time*.35)*.08;
+      ctx.translate(28,37);
+      ctx.scale(pulse,pulse);
+      ctx.globalAlpha=this.counterFlash>0?.95:.45;
+      ctx.strokeStyle=this.counterFlash>0?'#ffffff':this.char.accent;
+      ctx.lineWidth=this.counterFlash>0?7:4;
+      ctx.beginPath();
+      ctx.arc(0,0,31,0,Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     if(this.attackT>0){
       ctx.save();
       ctx.globalAlpha=.85;
@@ -434,8 +508,8 @@ class Fighter{
 function startGame(){
   state='play'; result.style.display='none';
   particles=[]; projectiles=[];
-  p1=new Fighter(W*.33,0,{left:'a',right:'d',jump:'w',attack:'k',special:'l'},false,1);
-  p2=new Fighter(W*.64,2,{left:'arrowleft',right:'arrowright',jump:'arrowup',attack:'n',special:'m'},true,-1);
+  p1=new Fighter(W*.33,0,{left:'a',right:'d',down:'s',jump:'w',attack:'k',special:'l'},false,1);
+  p2=new Fighter(W*.64,2,{left:'arrowleft',right:'arrowright',down:'arrowdown',jump:'arrowup',attack:'n',special:'m'},true,-1);
 }
 function endGame(win){
   state='result';
@@ -449,6 +523,18 @@ function updateProjectiles(){
     const target=pr.owner===p1?p2:p1;
     const box={x:pr.x-pr.r,y:pr.y-pr.r,w:pr.r*2,h:pr.r*2};
     if(pr.life>0&&target.inv<=0&&overlap(box,target)){
+      if(target.counterT>0){
+        target.counterT=0;
+        target.counterFlash=20;
+        pr.owner.percent+=Math.max(14,pr.damage*.9);
+        const counterForce=9+pr.owner.percent*.08;
+        pr.owner.vx=target.facing*counterForce;
+        pr.owner.vy=-7-pr.owner.percent*.02;
+        pr.owner.stun=14;
+        pr.life=0; shake=12;
+        burst(target.x+28,target.y+35,36,target.char.accent);
+        continue;
+      }
       target.percent+=pr.damage;
       const force=7+target.percent*.075*pr.power;
       target.vx=Math.sign(pr.vx)*force; target.vy=-5-target.percent*.024;

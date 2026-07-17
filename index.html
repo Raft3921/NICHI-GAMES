@@ -19,7 +19,19 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 #resultBox{padding:28px 40px;border-radius:24px;border:1px solid #ffffff33;background:#10172aee;text-align:center;box-shadow:0 30px 100px #000}
 #resultBox h1{margin:0 0 14px;font-size:clamp(36px,7vw,72px)}
 #resultBox button{padding:13px 28px;border:0;border-radius:14px;background:linear-gradient(135deg,#725cff,#31c7ff);color:#fff;font-size:18px;font-weight:900}
+
 @media (hover:hover) and (pointer:fine){#touch{display:none}}
+@media (pointer:coarse){
+  #help{font-size:12px;max-width:74vw}
+  .pad,.actions{bottom:max(14px,env(safe-area-inset-bottom))}
+}
+@media (max-width:720px){
+  .btn{width:60px;height:60px;font-size:24px}
+  .btn.action{width:70px;height:70px;font-size:16px}
+  .pad,.actions{gap:8px}
+  .pad{left:10px}.actions{right:10px}
+}
+
 </style>
 </head>
 <body>
@@ -276,10 +288,19 @@ class Fighter{
     if(this.inv>0&&Math.floor(this.inv/5)%2===0)ctx.globalAlpha=.35;
     ctx.translate(this.x,this.y);
 
+    const attackProgress = this.attackT > 0 ? 1 - this.attackT / 13 : 0;
+    const swing = this.attackT > 0
+      ? Math.sin(Math.min(1, attackProgress) * Math.PI) * 1.75
+      : 0;
+    const bodyLean = this.attackT > 0 ? this.facing * swing * 2.2 : 0;
+
     // elemental aura
     ctx.globalAlpha*=.35;
     glowOrb(28,37,28+Math.sin(time*.08+this.charIndex)*3,this.char.color);
     ctx.globalAlpha=1;
+
+    ctx.save();
+    ctx.translate(bodyLean,0);
 
     // cape / back ornament
     ctx.fillStyle=this.char.dark;
@@ -308,58 +329,102 @@ class Fighter{
     // head
     ctx.fillStyle='#f3c7a5';roundRect(15,1,27,24,10);
 
-    // hair / helmet and unique silhouette
+    // hair / helmet
     if(this.charIndex===0){
       ctx.fillStyle='#651522';
       ctx.beginPath();ctx.moveTo(14,8);ctx.lineTo(18,-8);ctx.lineTo(25,2);ctx.lineTo(31,-11);ctx.lineTo(38,4);ctx.lineTo(44,10);ctx.closePath();ctx.fill();
       ctx.fillStyle='#ffab52';ctx.beginPath();ctx.moveTo(21,0);ctx.lineTo(26,-13);ctx.lineTo(31,0);ctx.fill();
-      // sword
-      ctx.strokeStyle='#f8e4a4';ctx.lineWidth=5;ctx.beginPath();
-      const sx=this.facing>0?48:8;ctx.moveTo(sx,43);ctx.lineTo(sx+this.facing*25,18);ctx.stroke();
-      ctx.strokeStyle='#ff6c3e';ctx.lineWidth=2;ctx.stroke();
     }else if(this.charIndex===1){
       ctx.fillStyle='#dffbff';
       ctx.beginPath();ctx.moveTo(12,9);ctx.lineTo(28,-18);ctx.lineTo(45,9);ctx.closePath();ctx.fill();
       ctx.fillStyle='#56cdec';ctx.beginPath();ctx.moveTo(20,1);ctx.lineTo(28,-10);ctx.lineTo(35,1);ctx.closePath();ctx.fill();
-      // staff
-      ctx.strokeStyle='#b8ecff';ctx.lineWidth=4;ctx.beginPath();
-      const sx=this.facing>0?49:7;ctx.moveTo(sx,55);ctx.lineTo(sx+this.facing*12,7);ctx.stroke();
-      glowOrb(sx+this.facing*12,7,6,'#d9fbff');
     }else if(this.charIndex===2){
       ctx.fillStyle='#171a28';roundRect(12,-1,34,18,8);
       ctx.fillStyle='#ffe862';
       ctx.beginPath();ctx.moveTo(17,3);ctx.lineTo(29,-12);ctx.lineTo(27,2);ctx.lineTo(41,-7);ctx.lineTo(34,9);ctx.closePath();ctx.fill();
-      // scarf
       ctx.fillStyle='#f4cf35';ctx.beginPath();
       if(this.facing>0){ctx.moveTo(15,20);ctx.lineTo(-12,26);ctx.lineTo(10,34);}
       else{ctx.moveTo(41,20);ctx.lineTo(68,26);ctx.lineTo(46,34);}
       ctx.closePath();ctx.fill();
-      // kunai
-      ctx.fillStyle='#dce6ef';ctx.beginPath();
-      const kx=this.facing>0?51:5;ctx.moveTo(kx,39);ctx.lineTo(kx+this.facing*18,34);ctx.lineTo(kx+this.facing*8,46);ctx.closePath();ctx.fill();
     }else{
       ctx.fillStyle='#315c2d';roundRect(12,-1,34,19,9);
       ctx.fillStyle='#9bea86';
       ctx.beginPath();ctx.ellipse(18,0,9,16,-.65,0,Math.PI*2);ctx.ellipse(39,1,9,16,.65,0,Math.PI*2);ctx.fill();
-      // shoulder armor
       ctx.fillStyle='#6b8c45';ctx.beginPath();ctx.arc(9,29,12,0,Math.PI*2);ctx.arc(47,29,12,0,Math.PI*2);ctx.fill();
-      // shield
-      ctx.fillStyle='#426b39';ctx.strokeStyle='#b5df79';ctx.lineWidth=3;
-      ctx.beginPath();const sx=this.facing>0?50:6;
-      ctx.arc(sx,45,13,0,Math.PI*2);ctx.fill();ctx.stroke();
     }
 
     // eyes
     ctx.fillStyle='#fff';ctx.fillRect(this.facing>0?31:19,9,6,7);
     ctx.fillStyle='#10131b';ctx.fillRect(this.facing>0?34:20,11,3,4);
 
-    // attack flash
+    // weapon arm and weapon swing
+    const shoulderX = this.facing > 0 ? 42 : 14;
+    const shoulderY = 31;
+    const baseAngle = this.facing > 0 ? -0.55 : Math.PI + 0.55;
+    const swingAngle = this.facing > 0 ? swing : -swing;
+
+    ctx.save();
+    ctx.translate(shoulderX, shoulderY);
+    ctx.rotate(baseAngle + swingAngle);
+
+    // arm
+    ctx.strokeStyle='#f3c7a5';
+    ctx.lineWidth=7;
+    ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(17,0);ctx.stroke();
+
+    if(this.charIndex===0){
+      // fire sword
+      ctx.strokeStyle='#6f331d';ctx.lineWidth=5;
+      ctx.beginPath();ctx.moveTo(15,0);ctx.lineTo(23,0);ctx.stroke();
+      ctx.strokeStyle='#fff0b3';ctx.lineWidth=7;
+      ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(52,0);ctx.stroke();
+      ctx.strokeStyle='#ff6c3e';ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(24,0);ctx.lineTo(54,0);ctx.stroke();
+    }else if(this.charIndex===1){
+      // ice staff
+      ctx.strokeStyle='#b8ecff';ctx.lineWidth=5;
+      ctx.beginPath();ctx.moveTo(15,0);ctx.lineTo(51,0);ctx.stroke();
+      glowOrb(54,0,7,'#d9fbff');
+    }else if(this.charIndex===2){
+      // kunai
+      ctx.fillStyle='#dce6ef';
+      ctx.beginPath();ctx.moveTo(17,-5);ctx.lineTo(46,0);ctx.lineTo(17,7);ctx.lineTo(24,0);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#4a4f5a';ctx.lineWidth=4;
+      ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(24,0);ctx.stroke();
+    }else{
+      // heavy wooden hammer
+      ctx.strokeStyle='#73502e';ctx.lineWidth=7;
+      ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(45,0);ctx.stroke();
+      ctx.fillStyle='#426b39';
+      roundRect(40,-12,22,24,6);
+      ctx.strokeStyle='#b5df79';ctx.lineWidth=3;ctx.strokeRect(42,-10,18,20);
+    }
+    ctx.restore();
+
+    // off-hand shield for Gaia
+    if(this.charIndex===3){
+      ctx.fillStyle='#426b39';ctx.strokeStyle='#b5df79';ctx.lineWidth=3;
+      const sx=this.facing>0?8:48;
+      ctx.beginPath();ctx.arc(sx,45,13,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // attack arc/trail
     if(this.attackT>0){
-      ctx.save();ctx.globalAlpha=.8;
-      ctx.strokeStyle=this.char.accent;ctx.lineWidth=7;ctx.beginPath();
-      const cx=this.facing>0?53:3;
-      ctx.arc(cx,34,28,this.facing>0?-1.2:Math.PI+.2,this.facing>0?1.2:Math.PI-.2);
-      ctx.stroke();ctx.restore();
+      ctx.save();
+      ctx.globalAlpha=.85;
+      ctx.strokeStyle=this.char.accent;
+      ctx.lineWidth=8;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      const cx=this.facing>0?47:9;
+      const start=this.facing>0?-1.7:Math.PI+1.7;
+      const end=this.facing>0?1.0:Math.PI-1.0;
+      ctx.arc(cx,34,34,start,end,this.facing<0);
+      ctx.stroke();
+      ctx.restore();
     }
 
     ctx.restore();
@@ -436,16 +501,33 @@ function drawProjectiles(){
   }
 }
 function drawHUD(){
+  const touchDevice = matchMedia('(pointer:coarse)').matches;
+  const hudBottom = touchDevice ? 118 : 20;
+  const hudY = H - hudBottom - 82;
+  const panelW = Math.min(230, W * .42);
   const list=[{f:p1,x:18,align:'left'},{f:p2,x:W-18,align:'right'}];
+
   for(const d of list){
     ctx.textAlign=d.align;
-    const bx=d.align==='left'?12:W-262;
-    ctx.fillStyle='#050812bb';roundRect(bx,H-101,250,82,18);
-    ctx.fillStyle=d.f.char.color;ctx.font='900 16px system-ui';ctx.fillText(d.f.char.title,d.x,H-76);
-    ctx.fillStyle='#fff';ctx.font='900 22px system-ui';ctx.fillText(d.f.char.name,d.x,H-53);
-    ctx.font='900 34px system-ui';ctx.fillText(Math.floor(d.f.percent)+'%',d.x,H-22);
-    ctx.fillStyle=d.f.char.accent;ctx.font='800 20px system-ui';
-    ctx.fillText('◆'.repeat(d.f.stocks),d.align==='left'?135:W-135,H-44);
+    const bx=d.align==='left'?12:W-panelW-12;
+    ctx.fillStyle='#050812d8';
+    roundRect(bx,hudY,panelW,76,16);
+
+    ctx.fillStyle=d.f.char.color;
+    ctx.font='900 13px system-ui';
+    ctx.fillText(d.f.char.title,d.x,hudY+18);
+
+    ctx.fillStyle='#fff';
+    ctx.font='900 19px system-ui';
+    ctx.fillText(d.f.char.name,d.x,hudY+40);
+
+    ctx.font='900 29px system-ui';
+    ctx.fillText(Math.floor(d.f.percent)+'%',d.x,hudY+69);
+
+    ctx.fillStyle=d.f.char.accent;
+    ctx.font='800 17px system-ui';
+    const stockX=d.align==='left'?Math.min(panelW-20,122):W-Math.min(panelW-20,122);
+    ctx.fillText('◆'.repeat(d.f.stocks),stockX,hudY+57);
   }
 }
 function loop(){

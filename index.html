@@ -56,9 +56,9 @@ canvas{display:block;width:100vw;height:100vh;image-rendering:pixelated;image-re
 .card .desc{font-size:12px;color:#b1b7d8;line-height:1.4}
 .lock{position:absolute;right:8px;top:8px;background:#000a;padding:4px 6px;border:2px solid #777;font-size:11px}
 .portrait,.stage-thumb{
-  width:100%; height:130px; border:4px solid #0b0c11; background:#151926; position:relative;
+  width:100%; height:150px; border:4px solid #0b0c11; background:#151926; position:relative;
 }
-.stage-thumb{height:110px}
+.stage-thumb{height:122px}
 .menu-title{margin:0 0 10px;font-size:28px}
 #hudHelp{
   position:absolute; left:10px; top:10px; padding:8px 10px; background:#10131ecc;
@@ -238,7 +238,7 @@ const pauseOverlay = document.getElementById('pauseOverlay');
 const pauseChar = document.getElementById('pauseChar');
 const pauseWeapon = document.getElementById('pauseWeapon');
 
-const SCALE = 4;     // pixel size for sprites
+const SCALE = 5;     // pixel size for sprites (larger, richer)
 let W = innerWidth, H = innerHeight, DPR = devicePixelRatio || 1;
 let state = 'menu', paused = false, selectedChar = 0, selectedMode = 'cpu', selectedStage = 0, gameType = 'free', storyIndex = 0;
 let camera = { x:0, y:0, zoom:1, tx:0, ty:0, tz:1 };
@@ -321,6 +321,17 @@ function drawPixelImage(img, x, y, scale=1, flip=false){
   ctx.restore();
 }
 function makeCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function shadeColor(hex, amt){
+  hex = hex.replace('#','');
+  const num = parseInt(hex,16);
+  let r = (num >> 16) + amt;
+  let g = ((num >> 8) & 0xff) + amt;
+  let b = (num & 0xff) + amt;
+  r = Math.max(0,Math.min(255,r));
+  g = Math.max(0,Math.min(255,g));
+  b = Math.max(0,Math.min(255,b));
+  return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
 function fillPixels(g, pixels, palette, scale=1){
   for(let y=0;y<pixels.length;y++){
     for(let x=0;x<pixels[y].length;x++){
@@ -331,69 +342,157 @@ function fillPixels(g, pixels, palette, scale=1){
     }
   }
 }
+
 function makeCharacterSprite(ch, idx){
-  const c = makeCanvas(16,24), g = c.getContext('2d');
-  const skin='#efc3a7', eye='#1f1f28', white='#ffffff', boot='#111319';
-  const pal = { 
-    A: ch.hair, B: ch.color, C: ch.dark, D: ch.accent, E: skin, F: eye, G:white, H:boot
+  // Higher-resolution pixel sprite with stronger shading for pseudo-3D look
+  const c = makeCanvas(22,32), g = c.getContext('2d');
+  const skin='#efc3a7', skin2='#d79d84', eye='#1f1f28', white='#ffffff', boot='#111319', line='#0c0f18';
+  const pal = {
+    A: ch.hair, a: shadeColor(ch.hair,-18),
+    B: ch.color, b: shadeColor(ch.color,-18), c: shadeColor(ch.color,16),
+    C: ch.dark, D: ch.accent, E: skin, e: skin2, F: eye, G:white, H:boot, L:line
   };
-  let px = [
-    "....AAAAAA......",
-    "...AAAAAAAA.....",
-    "..AAAEAAEAAA....",
-    "..AAEEEEEEAA....",
-    "..AAEGEEGEAA....",
-    "...AEEEEEEA.....",
-    "...AAEEEEA......",
-    "....CCEECC......",
-    "...CBBBBBBC.....",
-    "..CBBBBDBBBCC...",
-    "..CBBBBDBBBBC...",
-    "..CCBBBBBBBCC...",
-    "...CCBBCCBBC....",
-    "...CBBBBBBBCC...",
-    "..CCBBBBBBBBCC..",
-    "..CBBCCC.CCCBC..",
-    "..CBCC.....CCB..",
-    "..CBC.......CB..",
-    "..HHC.......CH..",
-    ".HH.H.......HCH.",
-    ".H..H.......H.CH",
-    "H...H.......H..H",
-    "....H.......H...",
-    "....H.......H..."
+
+  // Base silhouette
+  const px = [
+    ".......AAAAAAA........",
+    "......AAAAAAAAA.......",
+    ".....AAaaaaaAAAA......",
+    "....AAAEEEEEEAAAA.....",
+    "....AAEEEEEEEEAAA.....",
+    "....AAEEGEEEGEEAA.....",
+    "....AAEEEEEEEEEEA.....",
+    ".....AAEEEEEEEEAA.....",
+    "......AAAEEEEAAA......",
+    ".......CCEEEECC.......",
+    "......CCBBBBBBCC......",
+    ".....CCBBBBDBBBCC.....",
+    ".....CBBBBBDBBBBC.....",
+    ".....CBBBBBDBBBBC.....",
+    ".....CCBBBBBBBBCC.....",
+    "......CCBBBBBBCC......",
+    "......CbbbbbbbbC......",
+    ".....CCbbbbbbbbCC.....",
+    ".....CbCCbbbbCCbC.....",
+    ".....CbC......CbC.....",
+    ".....CbC......CbC.....",
+    ".....CHC......CHC.....",
+    "....CHHC......CHHC....",
+    "....CHHC......CHHC....",
+    "....H..H......H..H....",
+    "...HH..H......H..HH...",
+    "...H...H......H...H...",
+    "..HH...H......H...HH..",
+    "..H....H......H....H..",
+    ".......H......H.......",
+    ".......H......H.......",
+    ".......H......H.......",
   ];
-  if(ch.weapon==='staff'){ px[12]="...CCBDCCBBC...."; }
-  if(ch.weapon==='kunai'){ px[9]="..CBBBBDBBBBC..."; px[10]="..CBBBBDBBBBC..."; }
-  if(ch.weapon==='hammer'){ px[13]="..CCBBBBBBBBCC.."; }
   fillPixels(g, px, pal, 1);
 
-  // small weapon hint in separate layer area
+  // Outline
+  g.fillStyle = line;
+  const img = g.getImageData(0,0,c.width,c.height);
+  const data = img.data;
+  const isFilled = (x,y)=>{
+    if(x<0||y<0||x>=c.width||y>=c.height) return false;
+    return data[(y*c.width+x)*4+3] > 0;
+  };
+  for(let y=0;y<c.height;y++){
+    for(let x=0;x<c.width;x++){
+      if(!isFilled(x,y)) continue;
+      const edge = !isFilled(x+1,y)||!isFilled(x-1,y)||!isFilled(x,y+1)||!isFilled(x,y-1);
+      if(edge){
+        // soft inner outline / shadow
+        g.fillStyle = 'rgba(0,0,0,.18)';
+        g.fillRect(x,y,1,1);
+      }
+    }
+  }
+
+  // Face extra shading and highlight
+  g.fillStyle = 'rgba(255,255,255,.16)';
+  g.fillRect(8,4,4,1);
+  g.fillStyle = skin2;
+  g.fillRect(7,7,1,4); g.fillRect(14,7,1,4);
+  g.fillStyle = line; g.fillRect(8,10,2,1); g.fillRect(12,10,2,1);
+
+  // Hair strands / specular
+  g.fillStyle = shadeColor(ch.hair,18);
+  g.fillRect(7,1,2,1); g.fillRect(12,1,2,1); g.fillRect(15,3,1,2);
+
+  // Costume shading
+  g.fillStyle = shadeColor(ch.color,22);
+  g.fillRect(8,11,2,4); g.fillRect(12,11,1,4);
+  g.fillStyle = shadeColor(ch.dark,18);
+  g.fillRect(6,16,10,2);
+
+  // Shoulder / armor pop
   g.fillStyle = ch.accent;
-  if(ch.weapon==='sword' || ch.weapon==='blade'){ g.fillRect(13,9,2,8); }
-  if(ch.weapon==='staff'){ g.fillRect(13,8,1,10); g.fillStyle = ch.accent; g.fillRect(12,7,3,2); }
-  if(ch.weapon==='kunai'){ g.fillStyle = '#d7e3ef'; g.fillRect(13,10,2,2); }
-  if(ch.weapon==='hammer'){ g.fillStyle = '#73512e'; g.fillRect(13,10,1,7); g.fillStyle = '#42693f'; g.fillRect(12,8,3,3); }
-  if(ch.weapon==='spear'){ g.fillStyle = '#fff4c8'; g.fillRect(13,8,1,10); g.fillRect(12,7,3,2); }
+  g.fillRect(4,11,2,2); g.fillRect(16,11,2,2);
+
+  // Weapon sprite (separate rich details)
+  if(ch.weapon==='sword' || ch.weapon==='blade'){
+    g.fillStyle = '#e7eef7'; g.fillRect(17,11,1,10);
+    g.fillStyle = ch.accent; g.fillRect(16,11,3,1);
+    g.fillStyle = '#8dd0ff'; g.fillRect(17,12,1,6);
+  }else if(ch.weapon==='staff'){
+    g.fillStyle = '#8f6d49'; g.fillRect(17,10,1,11);
+    g.fillStyle = ch.accent; g.fillRect(16,8,3,3);
+    g.fillStyle = '#ffffff'; g.fillRect(17,9,1,1);
+  }else if(ch.weapon==='kunai'){
+    g.fillStyle = '#dfe6ef'; g.fillRect(17,13,2,2); g.fillRect(18,12,1,4);
+    g.fillStyle = '#6b7788'; g.fillRect(17,14,1,1);
+  }else if(ch.weapon==='hammer'){
+    g.fillStyle = '#7b5730'; g.fillRect(17,11,1,11);
+    g.fillStyle = '#4a6e40'; g.fillRect(16,9,4,4);
+    g.fillStyle = '#89bf7d'; g.fillRect(17,10,2,1);
+  }else if(ch.weapon==='spear'){
+    g.fillStyle = '#efe7c2'; g.fillRect(17,9,1,12);
+    g.fillStyle = '#ffffff'; g.fillRect(16,8,3,2);
+  }
+
+  // Ground shadow baked sprite hint (more 3D feeling)
+  g.fillStyle = 'rgba(0,0,0,.14)';
+  g.fillRect(5,30,12,1);
+
   return c;
 }
+
+
 function makePortrait(ch, idx){
   const c = makeCanvas(96,64), g = c.getContext('2d');
   g.imageSmoothingEnabled = false;
-  // bg
   const bg = g.createLinearGradient(0,0,96,64);
-  bg.addColorStop(0, ch.dark); bg.addColorStop(1, ch.color);
+  bg.addColorStop(0, shadeColor(ch.dark,-8));
+  bg.addColorStop(1, shadeColor(ch.color,8));
   g.fillStyle = bg; g.fillRect(0,0,96,64);
-  for(let i=0;i<96;i+=8){ g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(i,0,4,64); }
-  // character center
-  g.drawImage(charSprites[idx], 26, 6, 44, 58);
+
+  // Decorative pixel aura to keep some of the previous stylish feeling
+  g.fillStyle = 'rgba(255,255,255,.08)';
+  for(let i=0;i<96;i+=6) g.fillRect(i,0,2,64);
+  g.fillStyle = 'rgba(255,255,255,.06)';
+  for(let y=0;y<64;y+=6) g.fillRect(0,y,96,2);
+
+  // Character larger in portrait
+  g.drawImage(charSprites[idx], 20, 1, 56, 60);
+
+  // Weapon / title bar
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0,50,96,14);
+  g.fillStyle = ch.accent; g.fillRect(0,50,96,2);
+
+  // small glow blocks
+  g.fillStyle = ch.accent; g.fillRect(7,8,3,3); g.fillRect(82,14,2,2); g.fillRect(76,24,3,3);
+
   return c;
 }
+
 function makeStageThumbnail(kind){
   const c = makeCanvas(120,64), g = c.getContext('2d');
   drawPixelStage(g, kind, 120, 64, true);
   return c;
 }
+
 
 function drawPixelStage(g, kind, w, h, thumb=false){
   const scale = thumb ? 2 : 4;
@@ -404,52 +503,63 @@ function drawPixelStage(g, kind, w, h, thumb=false){
     forest:['#12311e','#347145','#9be0a2']
   }[kind];
   g.fillStyle = sky[0]; g.fillRect(0,0,w,h);
-  // blocky gradient bands
+
+  // richer band gradient
   for(let y=0;y<h;y+=scale){
     const t = y/h;
-    const col = t < .45 ? sky[0] : t < .75 ? sky[1] : sky[2];
+    let col = t < .35 ? sky[0] : t < .68 ? sky[1] : sky[2];
     g.fillStyle = col; g.fillRect(0,y,w,scale);
   }
-  // distant shapes
-  function blockHill(base, step, color){
+
+  function blockHill(base, step, color, amp1=8, amp2=4){
     g.fillStyle = color;
     for(let x=0;x<w;x+=step){
-      const hh = Math.floor((Math.sin((x+tick*0.15)/18)+1)*6 + (Math.sin(x/7)+1)*3);
+      const hh = Math.floor((Math.sin((x+tick*0.15)/18)+1)*amp1 + (Math.sin(x/7)+1)*amp2);
       g.fillRect(x, base-hh, step, hh+h);
     }
   }
+
   if(kind==='sky'){
-    blockHill(h*0.72, 4, '#6474a7');
-    blockHill(h*0.81, 4, '#465273');
+    // sun glow
+    g.fillStyle = '#fff6bf'; g.fillRect(w-28,8,10,10); g.fillStyle='#ffe99a'; g.fillRect(w-24,12,2,2);
+    blockHill(h*0.69, 4, '#7182b2', 7, 4);
+    blockHill(h*0.78, 4, '#52607f', 6, 3);
     g.fillStyle='#ffffffcc';
-    for(let i=0;i<6;i++){ g.fillRect(6+i*18, 12+(i%2)*5, 16, 4); g.fillRect(10+i*18, 8+(i%2)*5, 8, 4); }
+    for(let i=0;i<6;i++){ const ox=(tick*0.12+i*18)%w; g.fillRect(6+ox, 12+(i%2)*5, 14, 4); g.fillRect(10+ox, 8+(i%2)*5, 8, 4); }
+    // floating islands
     g.fillStyle='#556680';
-    for(let i=0;i<4;i++){ let x=20+i*24,y=28+(i%2)*8; g.fillRect(x,y,16,4); g.fillRect(x+4,y+4,8,8); }
+    for(let i=0;i<4;i++){ let x=16+i*24,y=28+(i%2)*9; g.fillRect(x,y,18,4); g.fillRect(x+4,y+4,10,8); g.fillStyle='#79ad6a'; g.fillRect(x+1,y-2,16,2); g.fillStyle='#556680'; }
   }
   if(kind==='lava'){
-    blockHill(h*0.65, 4, '#4e2326');
-    blockHill(h*0.78, 4, '#311216');
-    g.fillStyle='#ffb049'; for(let i=0;i<5;i++){ g.fillRect(14+i*23, 25+(i%2)*5, 2, 18); }
-    g.fillStyle='#ff783a'; g.fillRect(0,h-14,w,14); g.fillStyle='#ffd261';
-    for(let x=0;x<w;x+=12){ g.fillRect(x+((tick/3)%6),h-12,5,2); }
+    blockHill(h*0.63, 4, '#57272a', 9, 3);
+    blockHill(h*0.77, 4, '#351419', 8, 4);
+    g.fillStyle='#ffb049'; for(let i=0;i<5;i++){ g.fillRect(14+i*23, 25+(i%2)*5, 2, 18); g.fillStyle='#ffd87e'; g.fillRect(15+i*23,25+(i%2)*5,1,6); g.fillStyle='#ffb049';}
+    g.fillStyle='#ff783a'; g.fillRect(0,h-16,w,16); g.fillStyle='#ffd261';
+    for(let x=0;x<w;x+=12){ g.fillRect(x+((tick/3)%6),h-12,5,2); g.fillRect(x+((tick/2)%6),h-6,3,2); }
   }
   if(kind==='moon'){
-    blockHill(h*0.73, 4, '#44507d');
-    blockHill(h*0.84, 4, '#283554');
+    blockHill(h*0.71, 4, '#4a5988', 7, 4);
+    blockHill(h*0.83, 4, '#2b3756', 7, 3);
     g.fillStyle='#fff7ce'; g.fillRect(84,8,14,14); g.fillStyle='#dce4ff'; g.fillRect(87,11,8,8);
-    g.fillStyle='#ffffff'; for(let i=0;i<40;i++){ g.fillRect((i*17)%w,(i*29)%30,1,1); }
+    g.fillStyle='#ffffff'; for(let i=0;i<44;i++){ g.fillRect((i*17)%w,(i*29)%34,1,1); if(i%9===0) g.fillRect((i*17+7)%w,(i*29+3)%34,2,1); }
+    g.fillStyle='rgba(255,255,255,.18)'; for(let i=0;i<5;i++) g.fillRect(i*24,42+(i%2)*2,20,2);
   }
   if(kind==='forest'){
-    blockHill(h*0.75, 4, '#2d6a3f');
-    blockHill(h*0.85, 4, '#1d4a2d');
-    g.fillStyle='#304e2f'; g.fillRect(54,5,12,58);
+    blockHill(h*0.74, 4, '#347145', 6, 3);
+    blockHill(h*0.84, 4, '#204a2f', 6, 3);
+    g.fillStyle='#304e2f'; g.fillRect(54,5,12,58); g.fillStyle='#496f45'; g.fillRect(56,5,4,58);
     g.fillStyle='#5aa362';
-    for(let i=0;i<8;i++){ g.fillRect(36+(i%4)*12, 8+Math.floor(i/4)*10, 18, 10); }
+    for(let i=0;i<8;i++){ g.fillRect(36+(i%4)*12, 8+Math.floor(i/4)*10, 18, 10); g.fillStyle='#7ac67a'; g.fillRect(38+(i%4)*12,10+Math.floor(i/4)*10,8,2); g.fillStyle='#5aa362'; }
+    g.fillStyle='rgba(255,248,190,.22)'; g.fillRect(8,0,4,38); g.fillRect(24,0,3,40);
   }
-  // platform strip
-  g.fillStyle='#26293a'; g.fillRect(0,h-10,w,10);
-  g.fillStyle='#c9d0ff'; g.fillRect(0,h-10,w,2);
+
+  // platform strip only for thumbnail
+  if(thumb){
+    g.fillStyle='#26293a'; g.fillRect(0,h-10,w,10);
+    g.fillStyle='#c9d0ff'; g.fillRect(0,h-10,w,2);
+  }
 }
+
 
 function refreshCharCards(){
   const grid = document.getElementById('charGrid');
@@ -570,7 +680,7 @@ class Fighter{
   resetAll(){ this.stocks=3; this.percent=0; this.respawn(); }
   respawn(){
     this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0;
-    this.w=16*SCALE/2; this.h=24*SCALE/2;
+    this.w=22*SCALE/2; this.h=32*SCALE/2;
     this.facing=this.baseFacing; this.onGround=false; this.jumps=2;
     this.attackT=0; this.cool=0; this.specialCool=0; this.inv=60; this.stun=0; this.counterT=0;
     this.intent={}; this.think=0;
@@ -700,22 +810,46 @@ class Fighter{
     if(this.stocks<=0) endBattle(op);
     else { this.percent = 0; this.respawn(); }
   }
+
   draw(){
     if(this.inv>0 && Math.floor(this.inv/4)%2===0) return;
+
     const bounce = this.onGround ? 0 : Math.sin(tick*.25+this.x*.01)*1;
+
+    // ground shadow for volume
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.fillRect(Math.floor(this.x+6), Math.floor(this.y+this.h-2), 18, 3);
+
+    // subtle aura behind like earlier versions, but restrained
+    ctx.fillStyle = this.char.color + '22';
+    ctx.fillRect(Math.floor(this.x+4), Math.floor(this.y+4+bounce), 16, 22);
+
     drawPixelImage(charSprites[this.charIndex], Math.floor(this.x), Math.floor(this.y+bounce), SCALE/2, this.facing<0);
 
-    // weapon swing / slash
+    // metallic/specular hit on weapon side for extra depth
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    if(this.facing>0) ctx.fillRect(Math.floor(this.x+18), Math.floor(this.y+10), 3, 10);
+    else ctx.fillRect(Math.floor(this.x+2), Math.floor(this.y+10), 3, 10);
+
+    // slash / attack arc
     if(this.attackT>0){
       ctx.fillStyle = this.char.accent;
-      const sx = this.facing>0 ? this.x+this.w+4 : this.x-10;
-      const sy = this.y+14;
-      for(let i=0;i<4;i++) ctx.fillRect(sx + (this.facing>0? i*2 : -i*2), sy+i*2, 2, 2);
+      const sx = this.facing>0 ? this.x+this.w+2 : this.x-12;
+      const sy = this.y+10;
+      for(let i=0;i<6;i++){
+        const ox = this.facing>0 ? i*2 : -i*2;
+        ctx.fillRect(Math.floor(sx + ox), Math.floor(sy+i*2), 3, 2);
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(Math.floor(sx + (this.facing>0?2:-2)), Math.floor(sy+4), 2, 2);
     }
     // counter ring
     if(this.counterT>0){
       ctx.strokeStyle = this.char.accent; ctx.lineWidth = 2;
-      ctx.strokeRect(this.x-3,this.y-3,this.w+6,this.h+6);
+      ctx.strokeRect(this.x-4,this.y-4,this.w+8,this.h+8);
+      ctx.fillStyle = this.char.accent;
+      ctx.fillRect(this.x-2,this.y-2,2,2); ctx.fillRect(this.x+this.w,this.y-2,2,2);
+      ctx.fillRect(this.x-2,this.y+this.h,2,2); ctx.fillRect(this.x+this.w,this.y+this.h,2,2);
     }
   }
 }

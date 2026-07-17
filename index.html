@@ -203,6 +203,16 @@ button,.card,.node{touch-action:manipulation}
 (() => {
 'use strict';
 
+window.addEventListener('error',e=>{
+ console.error('GAME ERROR:',e.error||e.message);
+ const help=document.getElementById('hudHelp');
+ if(help){
+  help.style.display='block';
+  help.textContent='ゲーム内エラーが発生しました。ページを再読み込みしてください。';
+ }
+});
+
+
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const screens=[...document.querySelectorAll('.screen')];
 const touch=document.getElementById('touch'),hudHelp=document.getElementById('hudHelp');
@@ -421,7 +431,12 @@ class Fighter{
   if(i.special&&this.specialCool<=0){
    let dir=i.specialType||forcedSpecial||'neutral';forcedSpecial=null;
    if(!this.cpu&&!dir){dir='neutral'}
-   if(!this.cpu&&dir==='neutral'){if(i.jump||keys[c?.jump])dir='up';else if(i.down)dir='down';else if(i.left||i.right)dir='side'}
+   if(!this.cpu&&dir==='neutral'){
+    const c=this.controls;
+    if(i.jump||keys[c.jump])dir='up';
+    else if(i.down||keys[c.down])dir='down';
+    else if(i.left||i.right||keys[c.left]||keys[c.right])dir='side';
+   }
    this.useSpecial(dir);this.specialCool=dir==='down'?105:88;
   }
   if(this.attackT>0){this.attackT--;if(this.attackT===7)this.tryHit(op)}

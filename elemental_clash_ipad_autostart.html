@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Elemental Clash - Fantasy Arena</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#080b18;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  canvas{display:block;width:100vw;height:100vh}
+  #ui{position:fixed;inset:0;pointer-events:none}
+  .panel{
+    pointer-events:auto;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(940px,94vw);max-height:92vh;overflow:auto;
+    padding:26px;border:1px solid #ffffff2a;border-radius:24px;
+    background:linear-gradient(180deg,#121a35ee,#090d1cee);
+    box-shadow:0 30px 100px #000a, inset 0 1px #ffffff1a;
+    backdrop-filter:blur(12px)
+  }
+  h1{margin:0;font-size:clamp(38px,7vw,84px);line-height:.95;letter-spacing:.03em;text-align:center}
+  .sub{text-align:center;color:#cfd8ff;margin:12px 0 22px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+  .cards{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px}
+  .card,.stage,.mode,button{touch-action:manipulation;
+    border:1px solid #ffffff24;border-radius:18px;background:#ffffff0d;color:#fff;
+    transition:.15s ease;cursor:pointer
+  }
+  .card{padding:14px;min-height:190px}
+  .card:hover,.stage:hover,.mode:hover,button:hover{transform:translateY(-2px);background:#ffffff18}
+  .card.selected,.stage.selected,.mode.selected{outline:3px solid #fff;box-shadow:0 0 30px var(--glow,#fff5)}
+  .portrait{
+    height:90px;border-radius:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;
+    font-size:58px;background:radial-gradient(circle at 35% 25%,#ffffff55,transparent 28%),var(--bg)
+  }
+  .name{font-weight:800;font-size:19px}.desc{font-size:13px;color:#c8d0ec;line-height:1.4}
+  .stagegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .stage{padding:14px}.stagepreview{height:90px;border-radius:13px;margin-bottom:8px;background:var(--preview)}
+  .mode{padding:12px 18px;font-weight:700}
+  .sectionTitle{margin:20px 0 10px;font-size:15px;text-transform:uppercase;letter-spacing:.16em;color:#9fb2ff}
+  #startBtn,#restartBtn{
+    display:block;margin:22px auto 0;padding:14px 36px;font-size:19px;font-weight:900;
+    background:linear-gradient(135deg,#7b5cff,#3cc8ff);border:none;box-shadow:0 10px 32px #4d6dff55
+  }
+  #help{pointer-events:none;
+    position:absolute;left:12px;top:12px;background:#0008;border:1px solid #fff2;border-radius:14px;
+    padding:10px 12px;color:#fff;font-size:13px;line-height:1.5;display:none
+  }
+  #result{display:none;text-align:center}
+  #result h2{font-size:54px;margin:0 0 10px}
+  #result p{color:#ccd5f7}
+  .tiny{font-size:12px;color:#aeb8da;text-align:center;margin-top:12px}
+  @media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}.panel{padding:18px}}
+
+  #touchControls{position:fixed;inset:0;pointer-events:none;display:block}
+  .touchPad,.touchActions{position:absolute;bottom:18px;display:flex;gap:12px;pointer-events:auto}
+  .touchPad{left:18px}
+  .touchActions{right:18px}
+  .touchBtn{
+    width:68px;height:68px;border-radius:50%;border:1px solid #ffffff55;
+    background:#0008;color:white;font-size:28px;font-weight:900;
+    display:flex;align-items:center;justify-content:center;
+    user-select:none;-webkit-user-select:none;touch-action:none;
+    box-shadow:0 8px 24px #0008
+  }
+  .touchBtn.wide{width:78px;height:78px;font-size:18px}
+  @media (pointer:coarse){
+    #touchControls{display:block}
+    #help{pointer-events:none;font-size:12px;max-width:70vw}
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div id="menu" class="panel" style="display:none">
+    <h1>ELEMENTAL<br>CLASH</h1>
+    <div class="sub">元素の戦士たちが、浮遊世界の覇権をかけて激突する。</div>
+
+    <div class="sectionTitle">1P キャラクター</div>
+    <div id="charCards" class="cards"></div>
+
+    <div class="sectionTitle">対戦モード</div>
+    <div class="row">
+      <div class="mode selected" data-mode="cpu">1P vs CPU</div>
+      <div class="mode" data-mode="2p">2人対戦</div>
+    </div>
+
+    <div class="sectionTitle">ステージ</div>
+    <div id="stageCards" class="stagegrid"></div>
+
+    <button id="startBtn">BATTLE START</button>
+    <div class="tiny">ブラウザでそのまま遊べます。ゲームパッドなしでもOK。</div>
+  </div>
+
+  <div id="help">
+    1P：A/D 移動・W ジャンプ・F 攻撃・G 必殺<br>
+    2P：←/→ 移動・↑ ジャンプ・L 攻撃・K 必殺<br>
+    画面下のボタンで操作<br>左：移動・ジャンプ　右：攻撃・必殺
+  </div>
+
+  <div id="result" class="panel">
+    <h2 id="resultText"></h2>
+    <p>元素の勝者が決した。</p>
+    <button id="restartBtn">もう一度戦う</button>
+  </div>
+  <div id="touchControls">
+    <div class="touchPad">
+      <div class="touchBtn" data-key="a">◀</div>
+      <div class="touchBtn" data-key="d">▶</div>
+      <div class="touchBtn" data-key="w">▲</div>
+    </div>
+    <div class="touchActions">
+      <div class="touchBtn wide" data-key="f">攻撃</div>
+      <div class="touchBtn wide" data-key="g">必殺</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const menu=document.getElementById('menu'),result=document.getElementById('result'),help=document.getElementById('help');
+const keys=Object.create(null), pressed=Object.create(null);
+
+let W=innerWidth,H=innerHeight,DPR=devicePixelRatio||1;
+let state='menu',selectedChar=0,selectedStage=0,mode='cpu',winner='',shake=0,particles=[],projectiles=[],time=0;
+
+const chars=[
+ {name:'イグナ',icon:'🔥',color:'#ff5b4d',dark:'#7d1721',element:'炎',speed:0.86,jump:13.6,power:1.12,
+  desc:'近距離で押し切る炎剣士。必殺は巨大な火球。'},
+ {name:'フロスト',icon:'❄️',color:'#67d8ff',dark:'#174a72',element:'氷',speed:0.72,jump:13.1,power:0.95,
+  desc:'相手の動きを鈍らせる氷術師。必殺は氷槍。'},
+ {name:'ヴォルト',icon:'⚡',color:'#ffe55a',dark:'#8f6410',element:'雷',speed:1.08,jump:14.2,power:0.9,
+  desc:'超高速で間合いを詰める雷の影。必殺は瞬間突進。'},
+ {name:'ガイア',icon:'🌿',color:'#72d36c',dark:'#285c2d',element:'自然',speed:0.64,jump:12.4,power:1.28,
+  desc:'重く強い守護者。必殺は地面から伸びる蔓。'}
+];
+
+const stages=[
+ {name:'浮遊神殿アストラ',kind:'sky',desc:'崩れた天空遺跡。中央に大きな主足場。'},
+ {name:'紅蓮火山ヴァルカ',kind:'lava',desc:'溶岩が脈打つ危険な火山闘技場。'}
+];
+
+function resize(){
+ DPR=devicePixelRatio||1;W=innerWidth;H=innerHeight;
+ canvas.width=W*DPR;canvas.height=H*DPR;canvas.style.width=W+'px';canvas.style.height=H+'px';
+ ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+addEventListener('resize',resize);resize();
+
+function buildMenu(){
+ const cc=document.getElementById('charCards');
+ chars.forEach((c,i)=>{
+  const d=document.createElement('div');d.className='card'+(i===0?' selected':'');
+  d.style.setProperty('--glow',c.color+'88');
+  d.innerHTML=`<div class="portrait" style="--bg:linear-gradient(135deg,${c.color},${c.dark})">${c.icon}</div>
+  <div class="name">${c.name}｜${c.element}</div><div class="desc">${c.desc}</div>`;
+  d.onclick=()=>{selectedChar=i;[...cc.children].forEach(x=>x.classList.remove('selected'));d.classList.add('selected')};
+  cc.appendChild(d);
+ });
+ const sc=document.getElementById('stageCards');
+ stages.forEach((s,i)=>{
+  const d=document.createElement('div');d.className='stage'+(i===0?' selected':'');
+  d.innerHTML=`<div class="stagepreview" style="--preview:${s.kind==='sky'?'linear-gradient(#7558ba,#d7b6ff 55%,#5d4a7c 56%,#2b2344)':'linear-gradient(#4c1520,#e14b25 58%,#24131a 59%,#120a0d)'}"></div>
+  <div class="name">${s.name}</div><div class="desc">${s.desc}</div>`;
+  d.onclick=()=>{selectedStage=i;[...sc.children].forEach(x=>x.classList.remove('selected'));d.classList.add('selected')};
+  sc.appendChild(d);
+ });
+ document.querySelectorAll('.mode').forEach(m=>m.onclick=()=>{
+  mode=m.dataset.mode;document.querySelectorAll('.mode').forEach(x=>x.classList.remove('selected'));m.classList.add('selected');
+ });
+}
+buildMenu();
+
+addEventListener('keydown',e=>{
+ const k=e.key.toLowerCase(); if(!keys[k]) pressed[k]=true; keys[k]=true;
+ if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
+ if(k==='escape'){startGame()}
+ if(k==='r'&&state==='play')startGame();
+});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+document.querySelectorAll('.touchBtn').forEach(btn=>{
+  const k=btn.dataset.key;
+  const down=e=>{
+    e.preventDefault();
+    if(!keys[k]) pressed[k]=true;
+    keys[k]=true;
+    btn.style.transform='scale(.92)';
+    btn.style.background='#ffffff33';
+  };
+  const up=e=>{
+    e.preventDefault();
+    keys[k]=false;
+    btn.style.transform='';
+    btn.style.background='';
+  };
+  btn.addEventListener('pointerdown',down);
+  btn.addEventListener('pointerup',up);
+  btn.addEventListener('pointercancel',up);
+  btn.addEventListener('pointerleave',up);
+});
+
+
+function consume(k){if(pressed[k]){delete pressed[k];return true}return false}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function rr(x,y,w,h,r,fill=true){
+ ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+ ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);fill?ctx.fill():ctx.stroke();
+}
+
+class Fighter{
+ constructor(x,charIndex,controls,isCPU=false,facing=1){
+  this.spawnX=x;this.char=chars[charIndex];this.charIndex=charIndex;this.controls=controls;this.cpu=isCPU;this.baseFacing=facing;
+  this.resetAll();
+ }
+ resetAll(){this.stocks=3;this.percent=0;this.respawn()}
+ respawn(){
+  this.x=this.spawnX;this.y=H*.28;this.vx=0;this.vy=0;this.w=52;this.h=68;this.facing=this.baseFacing;
+  this.onGround=false;this.jumps=2;this.attackT=0;this.cool=0;this.specialCool=0;this.inv=100;this.stun=0;this.slow=0;
+ }
+ input(op){
+  if(this.cpu){
+   const dx=(op.x-this.x);return{
+    left:dx<-45,right:dx>45,jump:(this.y>op.y+60)||((Math.random()<.008)&&this.onGround),
+    attack:Math.abs(dx)<78&&Math.abs(op.y-this.y)<80&&Math.random()<.10,
+    special:Math.abs(dx)>100&&Math.abs(dx)<360&&Math.random()<.018
+   };
+  }
+  const c=this.controls;
+  return{left:keys[c.left],right:keys[c.right],jump:consume(c.jump),attack:consume(c.attack),special:consume(c.special)};
+ }
+ update(op,platforms){
+  if(this.stun>0){this.stun--;this.applyPhysics(platforms);return}
+  const i=this.input(op),spd=this.char.speed*(this.slow>0?.55:1);
+  if(i.left){this.vx-=.82*spd;this.facing=-1}
+  if(i.right){this.vx+=.82*spd;this.facing=1}
+  if(!i.left&&!i.right)this.vx*=this.onGround?.78:.985;
+  this.vx=clamp(this.vx,-8.2*spd,8.2*spd);
+  if(i.jump&&this.jumps>0){this.vy=-(this.jumps===2?this.char.jump:this.char.jump*.84);this.jumps--;this.onGround=false;burst(this.x+26,this.y+68,8,'#fff')}
+  if(i.attack&&this.cool<=0){this.attackT=12;this.cool=22}
+  if(i.special&&this.specialCool<=0){this.useSpecial(op);this.specialCool=90}
+  if(this.attackT>0){this.attackT--;if(this.attackT===7)this.tryHit(op)}
+  if(this.cool>0)this.cool--;if(this.specialCool>0)this.specialCool--;if(this.inv>0)this.inv--;if(this.slow>0)this.slow--;
+  this.applyPhysics(platforms);
+  if(this.x<-180||this.x>W+180||this.y>H+200||this.y<-260)this.ko(op);
+ }
+ applyPhysics(platforms){
+  this.vy+=.67;this.x+=this.vx;this.y+=this.vy;this.onGround=false;
+  for(const p of platforms){
+   if(this.vy>=0&&this.x+this.w>p.x&&this.x<p.x+p.w&&this.y+this.h>=p.y&&this.y+this.h<=p.y+30){
+    this.y=p.y-this.h;this.vy=0;this.onGround=true;this.jumps=2;
+   }
+  }
+ }
+ tryHit(op){
+  const reach=52,hb={x:this.facing>0?this.x+this.w:this.x-reach,y:this.y+14,w:reach,h:42};
+  if(overlap(hb,op)&&op.inv<=0){
+   op.percent+=11*this.char.power;const p=6.4+op.percent*.074*this.char.power;
+   op.vx=this.facing*p;op.vy=-5.2-op.percent*.025;op.stun=7;shake=7;burst(op.x+26,op.y+30,20,'#ffe67a');
+  }
+ }
+ useSpecial(op){
+  const c=this.charIndex;
+  if(c===0){
+   projectiles.push({type:'fire',owner:this,x:this.x+26+this.facing*28,y:this.y+28,vx:this.facing*8.5,vy:0,r:16,life:110,color:'#ff7b35',damage:18,power:1.25});
+  }else if(c===1){
+   projectiles.push({type:'ice',owner:this,x:this.x+26+this.facing*28,y:this.y+30,vx:this.facing*10,vy:0,r:12,life:95,color:'#b9f1ff',damage:13,power:1,slow:120});
+  }else if(c===2){
+   this.vx=this.facing*17;this.vy=-1.2;this.attackT=9;
+   burst(this.x+26,this.y+34,26,'#fff16a');
+  }else{
+   projectiles.push({type:'vine',owner:this,x:this.x+26+this.facing*40,y:H*.72-20,vx:this.facing*5.5,vy:0,r:20,life:70,color:'#75d76f',damage:20,power:1.35});
+  }
+ }
+ ko(op){
+  this.stocks--;burst(clamp(this.x,0,W),clamp(this.y,0,H),48,this.char.color);shake=16;
+  if(this.stocks<=0)endGame(op);else{this.percent=0;this.respawn()}
+ }
+ draw(){
+  ctx.save();if(this.inv>0&&Math.floor(this.inv/5)%2===0)ctx.globalAlpha=.35;ctx.translate(this.x,this.y);
+  ctx.shadowColor=this.char.color;ctx.shadowBlur=18;
+  ctx.fillStyle=this.char.dark;rr(5,12,42,56,14);
+  ctx.fillStyle=this.char.color;rr(9,8,34,52,12);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#fff';ctx.fillRect(this.facing>0?29:15,22,6,8);ctx.fillStyle='#111';ctx.fillRect(this.facing>0?32:16,24,3,4);
+  ctx.fillStyle=this.char.color;
+  if(this.charIndex===0){ctx.beginPath();ctx.moveTo(12,10);ctx.lineTo(20,-8);ctx.lineTo(27,10);ctx.fill()}
+  if(this.charIndex===1){ctx.strokeStyle='#dff8ff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(26,8);ctx.lineTo(26,-10);ctx.stroke()}
+  if(this.charIndex===2){ctx.fillStyle='#fff16a';ctx.beginPath();ctx.moveTo(18,6);ctx.lineTo(28,-10);ctx.lineTo(26,8);ctx.lineTo(37,-3);ctx.lineTo(30,15);ctx.fill()}
+  if(this.charIndex===3){ctx.fillStyle='#9bec86';ctx.beginPath();ctx.ellipse(18,2,9,15,-.6,0,Math.PI*2);ctx.ellipse(34,3,8,14,.6,0,Math.PI*2);ctx.fill()}
+  if(this.attackT>0){ctx.fillStyle='#fff';rr(this.facing>0?46:-16,25,20,14,7)}
+  ctx.restore();
+ }
+}
+function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+
+function burst(x,y,n,color){
+ for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*7;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:20+Math.random()*30,color})}
+}
+
+let p1,p2,platforms=[];
+function startGame(){
+ state='play';menu.style.display='none';result.style.display='none';help.style.display='block';particles=[];projectiles=[];winner='';
+ const enemyChar=(selectedChar+1+Math.floor(Math.random()*3))%4;
+ p1=new Fighter(W*.34,selectedChar,{left:'a',right:'d',jump:'w',attack:'f',special:'g'},false,1);
+ p2=new Fighter(W*.62,enemyChar,{left:'arrowleft',right:'arrowright',jump:'arrowup',attack:'l',special:'k'},mode==='cpu',-1);
+ platforms=selectedStage===0?[
+  {x:W*.17,y:H*.72,w:W*.66,h:24},{x:W*.34,y:H*.52,w:W*.14,h:18},{x:W*.54,y:H*.52,w:W*.14,h:18}
+ ]:[
+  {x:W*.18,y:H*.72,w:W*.64,h:24},{x:W*.39,y:H*.53,w:W*.22,h:18}
+ ];
+}
+function endGame(win){
+ state='result';winner=win.char.name+' の勝利！';document.getElementById('resultText').textContent=winner;
+ result.style.display='block';help.style.display='none';
+}
+document.getElementById('startBtn').onclick=startGame;
+document.getElementById('restartBtn').onclick=startGame;
+setTimeout(startGame, 100);
+
+function updateProjectiles(){
+ for(const pr of projectiles){
+  pr.x+=pr.vx;pr.y+=pr.vy;pr.life--;
+  const target=pr.owner===p1?p2:p1;
+  const box={x:pr.x-pr.r,y:pr.y-pr.r,w:pr.r*2,h:pr.r*2};
+  if(pr.life>0&&target.inv<=0&&overlap(box,target)){
+   target.percent+=pr.damage;const pw=7+target.percent*.075*pr.power;
+   target.vx=Math.sign(pr.vx)*pw;target.vy=-5-target.percent*.024;target.stun=9;if(pr.slow)target.slow=pr.slow;
+   pr.life=0;shake=9;burst(pr.x,pr.y,26,pr.color);
+  }
+ }
+ projectiles=projectiles.filter(p=>p.life>0&&p.x>-100&&p.x<W+100);
+}
+
+function drawBackground(){
+ if(selectedStage===0){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#24164d');g.addColorStop(.55,'#7b5cc4');g.addColorStop(1,'#d8baff');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  for(let i=0;i<55;i++){const x=(i*173+time*.03)%W,y=(i*97)%H*.65;ctx.fillStyle='#fff8';ctx.fillRect(x,y,2,2)}
+  ctx.fillStyle='#ffffff22';for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse(W*(.1+i*.22),H*(.2+(i%2)*.08),90,28,0,0,Math.PI*2);ctx.fill()}
+ }else{
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#170814');g.addColorStop(.6,'#5c1720');g.addColorStop(1,'#ff5a25');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#ff8a32';for(let i=0;i<18;i++){const x=(i*211+time*.09)%W,y=H*.84+Math.sin(time*.02+i)*10;ctx.beginPath();ctx.arc(x,y,20+((i*7)%18),0,Math.PI*2);ctx.fill()}
+ }
+}
+function drawStage(){
+ for(const p of platforms){
+  ctx.fillStyle=selectedStage===0?'#6c5a89':'#2b2025';rr(p.x,p.y,p.w,p.h,9);
+  ctx.fillStyle=selectedStage===0?'#cdb7ff':'#ff6a35';ctx.fillRect(p.x+8,p.y,p.w-16,5);
+ }
+}
+function drawProjectiles(){
+ for(const p of projectiles){
+  ctx.save();ctx.shadowColor=p.color;ctx.shadowBlur=24;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.restore();
+ }
+}
+function drawHUD(){
+ const data=[{f:p1,x:24,a:'left'},{f:p2,x:W-24,a:'right'}];
+ for(const d of data){
+  ctx.textAlign=d.a;ctx.fillStyle='#060914bb';const bx=d.a==='left'?14:W-254;rr(bx,H-98,240,78,18);
+  ctx.fillStyle='#fff';ctx.font='800 18px system-ui';ctx.fillText(d.f.char.name,d.x,H-69);
+  ctx.font='900 36px system-ui';ctx.fillText(Math.floor(d.f.percent)+'%',d.x,H-31);
+  ctx.fillStyle=d.f.char.color;ctx.font='800 21px system-ui';ctx.fillText('◆'.repeat(d.f.stocks),d.a==='left'?135:W-135,H-51);
+  if(d.f.specialCool>0){ctx.fillStyle='#fff5';ctx.font='12px system-ui';ctx.fillText('必殺 '+Math.ceil(d.f.specialCool/60),d.a==='left'?135:W-135,H-31)}
+ }
+}
+
+function loop(){
+ time++;ctx.save();if(shake>0){ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.86;if(shake<.4)shake=0}
+ drawBackground();drawStage();
+ if(state==='play'){
+  p1.update(p2,platforms);p2.update(p1,platforms);updateProjectiles();
+  p1.draw();p2.draw();drawProjectiles();
+  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.18;p.life--;ctx.globalAlpha=Math.max(0,p.life/35);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,5,5);ctx.globalAlpha=1}
+  particles=particles.filter(p=>p.life>0);drawHUD();
+ }
+ ctx.restore();requestAnimationFrame(loop);
+}
+loop();
+})();
+</script>
+</body>
+</html>

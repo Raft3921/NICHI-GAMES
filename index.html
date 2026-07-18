@@ -96,7 +96,49 @@ img.portrait{object-fit:contain;image-rendering:auto;background:radial-gradient(
 .node.current{outline:4px solid #fff}
 .node.cleared{background:#214035}
 .node.locked{opacity:.4;cursor:not-allowed}
+
 .pixel-titlebar{height:10px;background:repeating-linear-gradient(90deg,#8ea1ff 0 10px,#ccd4ff 10px 20px,#5364b4 20px 30px)}
+.title-panel{position:relative;overflow:hidden;min-height:min(690px,92vh);background:
+  radial-gradient(circle at 50% 34%,#44569b 0 4%,transparent 31%),
+  linear-gradient(180deg,#20294b 0 43%,#121522 78%);isolation:isolate}
+.title-panel:before{content:"";position:absolute;inset:0;z-index:-2;opacity:.38;background:
+  repeating-linear-gradient(0deg,transparent 0 14px,#ffffff0a 14px 16px),
+  repeating-linear-gradient(90deg,transparent 0 14px,#ffffff08 14px 16px)}
+.title-panel:after{content:"";position:absolute;left:-8%;right:-8%;bottom:170px;height:90px;z-index:-1;
+  background:linear-gradient(180deg,#7986b8,#303956);clip-path:polygon(0 80%,8% 30%,18% 70%,29% 12%,40% 66%,54% 8%,66% 62%,79% 20%,90% 70%,100% 32%,100% 100%,0 100%)}
+.game-mark{width:92px;height:92px;margin:2px auto 8px;position:relative;filter:drop-shadow(5px 7px 0 #080a10)}
+.game-mark .diamond{position:absolute;inset:14px;transform:rotate(45deg);background:#596cd3;border:7px solid #dbe3ff;box-shadow:inset 0 0 0 7px #26337d}
+.game-mark .cross:before,.game-mark .cross:after{content:"";position:absolute;background:#fff3a6;left:43px;top:7px;width:7px;height:78px}
+.game-mark .cross:after{transform:rotate(90deg)}
+.title-logo-wrap{position:relative;z-index:3}
+.title-logo-wrap .logo{background:linear-gradient(#fff,#d9e2ff 42%,#8fa4ff 43%,#fff 70%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:2px #11162e;
+  filter:drop-shadow(0 5px 0 #060811)}
+.title-cast{height:245px;position:relative;margin:-2px auto -8px;max-width:900px;pointer-events:none}
+.title-fighter{position:absolute;bottom:0;width:150px;height:210px;object-fit:contain;filter:drop-shadow(0 9px 0 #080a10) drop-shadow(0 0 10px #9eb0ff55)}
+.title-fighter:nth-child(1){left:0%;transform:rotate(-7deg) scale(.82)}
+.title-fighter:nth-child(2){left:10%;transform:rotate(-4deg) scale(.9)}
+.title-fighter:nth-child(3){left:22%;transform:rotate(-2deg) scale(.96)}
+.title-fighter:nth-child(4){left:36%;transform:scale(1.12);z-index:3}
+.title-fighter:nth-child(5){right:36%;transform:scale(1.08);z-index:2}
+.title-fighter:nth-child(6){right:22%;transform:rotate(2deg) scale(.96)}
+.title-fighter:nth-child(7){right:10%;transform:rotate(4deg) scale(.9)}
+.title-fighter:nth-child(8){right:0%;transform:rotate(7deg) scale(.82)}
+.title-actions{position:relative;z-index:5;background:#10131bd9;border:3px solid #66709d;padding:8px 12px 10px;margin:auto;max-width:470px}
+.stage-card{overflow:hidden;padding:8px}
+.stage-card .stage-art{position:relative;height:174px;border:4px solid #0b0c11;background:#111;overflow:hidden}
+.stage-card .stage-art canvas{width:100%;height:100%;object-fit:cover}
+.stage-card .stage-label{position:absolute;left:8px;bottom:8px;background:#090b13dd;border:2px solid #d8deff;padding:5px 8px;font-weight:900}
+.stage-card.selected .stage-art{outline:4px solid #fff;outline-offset:-4px}
+@media(max-width:760px){
+  .title-panel{min-height:94vh;padding:10px}
+  .title-cast{height:190px;margin-top:-6px}
+  .title-fighter{width:108px;height:165px}
+  .game-mark{width:70px;height:70px}
+  .game-mark .diamond{inset:12px;border-width:5px;box-shadow:inset 0 0 0 5px #26337d}
+  .game-mark .cross:before,.game-mark .cross:after{left:33px;top:7px;height:56px;width:5px}
+  .stage-card .stage-art{height:142px}
+}
 @media (max-width:760px){
   .char-grid{grid-template-columns:repeat(2,1fr)}
   .stage-grid,.mode-grid{grid-template-columns:1fr}
@@ -149,12 +191,18 @@ img.portrait{object-fit:contain;image-rendering:auto;background:radial-gradient(
   </div>
 
   <section id="titleScreen" class="screen active">
-    <div class="pixel-panel">
+    <div class="pixel-panel title-panel">
       <div class="pixel-titlebar"></div>
-      <h1 class="logo"><small>AIでつくった</small>格闘ゲーム</h1>
-      <div class="sub">高精細ドットキャラクターで戦う、オリジナル格闘ゲーム。</div>
-      <button id="freeBtn" class="btn big">フリーバトル</button>
-      <button id="storyBtn" class="btn big">ストーリーマップ</button>
+      <div class="title-logo-wrap">
+        <div class="game-mark" aria-hidden="true"><div class="diamond"></div><div class="cross"></div></div>
+        <h1 class="logo"><small>AIでつくった</small>格闘ゲーム</h1>
+        <div class="sub">8人のファイター、4つの戦場。最後まで立っていろ！</div>
+      </div>
+      <div id="titleCast" class="title-cast" aria-label="全キャラクター集合"></div>
+      <div class="title-actions">
+        <button id="freeBtn" class="btn big">⚔ フリーバトル</button>
+        <button id="storyBtn" class="btn big">◆ ストーリーマップ</button>
+      </div>
     </div>
   </section>
 
@@ -611,21 +659,52 @@ function refreshCharCards(){
   });
 }
 
+function drawStagePreview(g, stage, w, h){
+  drawPixelStage(g, stage.kind, w, h, true);
+  const plats = {
+    sky:[{x:.08,y:.76,w:.84},{x:.22,y:.51,w:.18},{x:.61,y:.51,w:.18}],
+    lava:[{x:.06,y:.79,w:.88},{x:.20,y:.55,w:.19},{x:.67,y:.55,w:.19}],
+    moon:[{x:.07,y:.82,w:.86},{x:.18,y:.59,w:.18},{x:.64,y:.59,w:.18},{x:.41,y:.38,w:.18}],
+    forest:[{x:.05,y:.78,w:.90},{x:.17,y:.53,w:.21},{x:.62,y:.48,w:.21},{x:.82,y:.62,w:.13}]
+  }[stage.kind];
+  for(const p of plats){
+    const x=Math.floor(p.x*w), y=Math.floor(p.y*h), pw=Math.floor(p.w*w);
+    g.fillStyle='#202438';g.fillRect(x,y,pw,10);
+    g.fillStyle='#eef1ff';g.fillRect(x,y,pw,3);
+    g.fillStyle='#596384';
+    for(let px=x+5;px<x+pw-5;px+=18) g.fillRect(px,y+5,10,2);
+  }
+  g.fillStyle='rgba(0,0,0,.2)';g.fillRect(0,h-16,w,16);
+}
 function buildStageCards(){
   const grid = document.getElementById('stageGrid');
   if(grid.children.length) return;
   stages.forEach((s,i)=>{
     const d = document.createElement('div');
-    d.className='card';
-    d.innerHTML = `<canvas class="stage-thumb" width="120" height="64"></canvas>
-      <div class="name">${s.name}</div><div class="desc">${s.desc}</div>`;
+    d.className='card stage-card';
+    d.innerHTML = `<div class="stage-art"><canvas width="360" height="180"></canvas><div class="stage-label">${s.name}</div></div>
+      <div class="desc" style="margin-top:8px">${s.desc}</div>`;
     d.onclick=()=>{ selectedStage = i; setSelectedCard(grid, i); };
     grid.appendChild(d);
-    d.querySelector('canvas').getContext('2d').drawImage(stageThumbs[i],0,0);
+    const cv=d.querySelector('canvas');
+    drawStagePreview(cv.getContext('2d'),s,cv.width,cv.height);
   });
   setSelectedCard(grid,0);
 }
 buildStageCards();
+
+function buildTitleCast(){
+  const cast=document.getElementById('titleCast');
+  if(!cast || cast.children.length) return;
+  portraitFiles.forEach((src,i)=>{
+    const img=document.createElement('img');
+    img.className='title-fighter';
+    img.src=src;
+    img.alt=chars[i].name;
+    cast.appendChild(img);
+  });
+}
+buildTitleCast();
 
 function buildStory(){
   const map = document.getElementById('storyMap');
@@ -709,7 +788,7 @@ class Fighter{
     this.x=this.spawnX; this.y=this.spawnY; this.vx=0; this.vy=0;
     this.w=22*SCALE/2; this.h=32*SCALE/2;
     this.facing=this.baseFacing; this.onGround=false; this.jumps=2;
-    this.attackT=0; this.cool=0; this.specialCool=0; this.inv=60; this.stun=0; this.counterT=0;
+    this.attackT=0; this.attackMax=12; this.cool=0; this.specialCool=0; this.inv=60; this.stun=0; this.counterT=0;
     this.intent={}; this.think=0;
   }
   input(op){
@@ -754,7 +833,7 @@ class Fighter{
       spawnDust(this.x+this.w/2, this.y+this.h);
     }
 
-    if(i.attack && this.cool<=0){ this.attackT = this.char.weapon==='axe' ? 17 : 12; this.cool = this.char.weapon==='kunai'?14:this.char.weapon==='axe'?25:20; }
+    if(i.attack && this.cool<=0){ this.attackMax=this.char.weapon==='axe'?17:12; this.attackT=this.attackMax; this.cool=this.char.weapon==='kunai'?14:this.char.weapon==='axe'?25:20; }
     if(i.special && this.specialCool<=0){
       let dir = i.specialType || forcedSpecial || 'neutral';
       forcedSpecial = null;
@@ -814,29 +893,29 @@ class Fighter{
     }
   }
   useSpecial(dir){
-    if(dir==='side'){ this.vx = this.facing * (7 + this.char.speed*2.5); this.vy = -1.3; this.attackT = 13; spawnBurst(this.x+this.w/2,this.y+this.h/2, this.char.color, 14); return; }
-    if(dir==='up'){ this.vy = -(9 + this.char.jump*.32); this.vx = this.facing*1.6; this.attackT = 14; this.jumps = 0; spawnBurst(this.x+this.w/2,this.y+this.h, this.char.accent, 18); return; }
+    if(dir==='side'){ this.vx = this.facing * (7 + this.char.speed*2.5); this.vy = -1.3; this.attackMax=13; this.attackT = 13; spawnBurst(this.x+this.w/2,this.y+this.h/2, this.char.color, 14); return; }
+    if(dir==='up'){ this.vy = -(9 + this.char.jump*.32); this.vx = this.facing*1.6; this.attackMax=14; this.attackT = 14; this.jumps = 0; spawnBurst(this.x+this.w/2,this.y+this.h, this.char.accent, 18); return; }
     if(dir==='down'){ this.counterT = 32; spawnBurst(this.x+this.w/2,this.y+this.h/2, '#ffffff', 12); return; }
 
     if(this.char.weapon==='kunai'){
-      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+12,this.facing*6.4,0,3,'#e7edf5',12);
+      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+12,this.facing*6.4,0,3,'#e7edf5',12,'kunai');
     }else if(this.char.weapon==='staff'){
-      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+10,this.facing*5.0,0,5,this.char.accent,16);
+      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+10,this.facing*5.0,0,5,this.char.accent,16,'magic');
     }else if(this.char.weapon==='robot'){
-      spawnProjectile(this,this.x+this.w/2+this.facing*11,this.y+11,this.facing*5.8,0,5,'#4fd5ff',15);
+      spawnProjectile(this,this.x+this.w/2+this.facing*11,this.y+11,this.facing*5.8,0,5,'#4fd5ff',15,'laser');
     }else if(this.char.weapon==='axe'){
-      this.vx=this.facing*5.8;this.attackT=17;
+      this.vx=this.facing*5.8;this.attackMax=17;this.attackT=17;
       spawnBurst(this.x+this.w/2,this.y+this.h/2,'#ffb15e',18);
     }else if(this.char.weapon==='talisman'){
-      spawnProjectile(this,this.x+this.w/2+this.facing*9,this.y+9,this.facing*4.4,-.15,5,'#fff4e7',13);
+      spawnProjectile(this,this.x+this.w/2+this.facing*9,this.y+9,this.facing*4.4,-.15,5,'#fff4e7',13,'talisman');
     }else if(this.char.weapon==='bow'){
-      spawnProjectile(this,this.x+this.w/2+this.facing*12,this.y+10,this.facing*7.2,-.25,3,'#d9ef8c',12);
+      spawnProjectile(this,this.x+this.w/2+this.facing*12,this.y+10,this.facing*7.2,-.25,3,'#d9ef8c',12,'arrow');
     }else if(this.char.weapon==='gadget'){
-      spawnProjectile(this,this.x+this.w/2+this.facing*8,this.y+8,this.facing*3.5,-1.4,5,'#f4c44e',17);
+      spawnProjectile(this,this.x+this.w/2+this.facing*8,this.y+8,this.facing*3.5,-1.4,5,'#f4c44e',17,'bomb');
     }else if(this.char.weapon==='blade'){
-      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+12,this.facing*4.6,0,5,this.char.color,17);
+      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+12,this.facing*4.6,0,5,this.char.color,17,'blade');
     }else{
-      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+12,this.facing*4.2,0,5,this.char.color,16);
+      spawnProjectile(this,this.x+this.w/2+this.facing*10,this.y+12,this.facing*4.2,0,5,this.char.color,16,'fireball');
     }
   }
   ko(op){
@@ -862,12 +941,25 @@ class Fighter{
 
     const spriteW = this.char.weapon==='axe' ? 116 : this.char.weapon==='staff' ? 104 : 108;
     const spriteH = this.char.weapon==='axe' ? 116 : 108;
-    drawCharacterImage(
-      charSprites[this.charIndex],
-      Math.floor(this.x + this.w/2 - spriteW/2),
-      Math.floor(this.y + this.h - spriteH + 10 + bounce),
-      spriteW, spriteH, this.facing<0
-    );
+    let motionX=0,motionY=0,rot=0,sx=1,sy=1;
+    if(Math.abs(this.vx)>.7 && this.onGround){ rot=this.facing*.025; motionY=Math.sin(tick*.7)*1.2; }
+    if(!this.onGround){ rot=this.vx*.012; sy=.98; sx=1.02; }
+    if(this.attackT>0){
+      const phase=1-(this.attackT/Math.max(1,this.attackMax));
+      const swing=Math.sin(Math.min(1,phase)*Math.PI);
+      motionX=this.facing*swing*(this.char.weapon==='axe'?13:9);
+      motionY=-swing*4;
+      rot=this.facing*swing*(this.char.weapon==='axe'?.28:this.char.weapon==='kunai'?.16:.21);
+      sx=1+swing*.08; sy=1-swing*.05;
+    }
+    const drawX=Math.floor(this.x + this.w/2 - spriteW/2);
+    const drawY=Math.floor(this.y + this.h - spriteH + 10 + bounce);
+    ctx.save();
+    ctx.translate(drawX+spriteW/2+motionX,drawY+spriteH/2+motionY);
+    ctx.rotate(rot);
+    ctx.scale(sx,sy);
+    drawCharacterImage(charSprites[this.charIndex],-spriteW/2,-spriteH/2,spriteW,spriteH,this.facing<0);
+    ctx.restore();
 
     // metallic/specular hit on weapon side for extra depth
     ctx.fillStyle = 'rgba(255,255,255,.18)';
@@ -897,8 +989,8 @@ class Fighter{
   }
 }
 
-function spawnProjectile(owner,x,y,vx,vy,r,color,damage){
-  projectiles.push({owner,x,y,vx,vy,r,color,damage,life:80});
+function spawnProjectile(owner,x,y,vx,vy,r,color,damage,kind='fireball'){
+  projectiles.push({owner,x,y,vx,vy,r,color,damage,kind,life:80,spin:Math.random()*6.28});
 }
 function spawnBurst(x,y,color,n){
   for(let i=0;i<n;i++){
@@ -1024,10 +1116,52 @@ function drawBackground(){
 
 function drawProjectiles(){
   for(const p of projectiles){
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x-p.r), Math.floor(p.y-p.r), p.r*2, p.r*2);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(Math.floor(p.x-p.r+1), Math.floor(p.y-p.r+1), Math.max(1,p.r), Math.max(1,p.r));
+    const dir=Math.sign(p.vx)||1;
+    ctx.save();
+    ctx.translate(Math.floor(p.x),Math.floor(p.y));
+    p.spin += .18*dir;
+    if(p.kind==='kunai'){
+      ctx.rotate(Math.atan2(p.vy,p.vx));
+      ctx.fillStyle='#eaf0f5';ctx.fillRect(-9,-2,13,4);
+      ctx.fillStyle='#7c8796';ctx.fillRect(3,-4,6,8);
+      ctx.fillStyle='#202633';ctx.fillRect(-12,-1,4,2);
+    }else if(p.kind==='arrow'){
+      ctx.rotate(Math.atan2(p.vy,p.vx));
+      ctx.fillStyle='#e7d7a0';ctx.fillRect(-12,-1,20,2);
+      ctx.fillStyle='#f4f7ff';ctx.fillRect(7,-3,7,6);
+      ctx.fillStyle='#77a85b';ctx.fillRect(-12,-4,5,3);ctx.fillRect(-12,2,5,3);
+    }else if(p.kind==='talisman'){
+      ctx.rotate(Math.sin(p.spin)*.18);
+      ctx.fillStyle='#fff3d6';ctx.fillRect(-6,-9,12,18);
+      ctx.fillStyle='#e04444';ctx.fillRect(-2,-6,4,12);ctx.fillRect(-4,-1,8,3);
+      ctx.fillStyle='#3b2830';ctx.fillRect(-5,-8,10,2);
+    }else if(p.kind==='bomb'){
+      ctx.rotate(p.spin);
+      ctx.fillStyle='#252936';ctx.fillRect(-8,-7,16,15);
+      ctx.fillStyle='#555e72';ctx.fillRect(-5,-9,10,3);
+      ctx.fillStyle='#f4c44e';ctx.fillRect(3,-12,3,5);
+      ctx.fillStyle='#ff6a3d';ctx.fillRect(6,-14,4,4);
+    }else if(p.kind==='laser'){
+      ctx.rotate(Math.atan2(p.vy,p.vx));
+      ctx.fillStyle='#c8f5ff';ctx.fillRect(-14,-3,28,6);
+      ctx.fillStyle='#4fd5ff';ctx.fillRect(-10,-5,18,2);ctx.fillRect(-10,3,18,2);
+      ctx.fillStyle='#fff';ctx.fillRect(6,-2,8,4);
+    }else if(p.kind==='blade'){
+      ctx.rotate(p.spin);
+      ctx.strokeStyle=p.color;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(0,0,10,.4,5.7);ctx.stroke();
+      ctx.fillStyle='#fff';ctx.fillRect(7,-5,3,3);
+    }else{
+      const pulse=1+Math.sin(p.spin*2)*.15;
+      ctx.scale(pulse,pulse);
+      ctx.fillStyle=p.kind==='magic'?'#8066e8':'#ff5a35';
+      ctx.fillRect(-8,-7,16,14);ctx.fillRect(-11,-3,22,7);
+      ctx.fillStyle=p.color;ctx.fillRect(-6,-9,12,18);ctx.fillRect(-9,-5,18,10);
+      ctx.fillStyle='#fff5b0';ctx.fillRect(-3,-4,7,7);
+      ctx.fillStyle=p.kind==='magic'?'#b9f3ff':'#ff9b35';
+      for(let i=0;i<3;i++) ctx.fillRect(-13-i*4*dir,-5+i*4,5,3);
+    }
+    ctx.restore();
   }
 }
 function drawParticles(){

@@ -23,6 +23,22 @@
   #new{background:#f0c75e;color:#302000}
   #save{background:#78b7ff;color:#07172a}
   #msg{position:absolute;left:50%;top:20%;transform:translateX(-50%);background:#000b;padding:10px 16px;border-radius:8px;opacity:0;transition:.2s}
+
+  #mobile{position:fixed;inset:0;z-index:4;pointer-events:none;display:none}
+  .touch{position:absolute;pointer-events:auto;touch-action:none;user-select:none}
+  #stick{left:20px;bottom:28px;width:128px;height:128px;border-radius:50%;background:#ffffff2b;border:3px solid #ffffff88}
+  #knob{position:absolute;left:39px;top:39px;width:50px;height:50px;border-radius:50%;background:#ffffffaa}
+  #look{right:0;top:0;width:58%;height:72%}
+  .action{width:68px;height:68px;border-radius:50%;border:3px solid #ffffff99;background:#111a;color:white;font-size:13px;font-weight:800;display:grid;place-items:center;text-align:center}
+  #jump{right:24px;bottom:28px}
+  #break{right:105px;bottom:105px}
+  #place{right:22px;bottom:120px}
+  @media (pointer:coarse){
+    #mobile{display:block}
+    #info{font-size:12px}
+    #hotbar{bottom:8px;transform:translateX(-50%) scale(.76)}
+  }
+
 </style>
 </head>
 <body>
@@ -36,6 +52,15 @@
     <button id="save">保存</button>
     <p style="font-size:13px">WASD：移動　Space：ジャンプ　左クリック：破壊　右クリック：設置　1〜5：ブロック選択　Esc：メニュー</p>
   </div>
+</div>
+
+
+<div id="mobile">
+  <div id="stick" class="touch"><div id="knob"></div></div>
+  <div id="look" class="touch"></div>
+  <div id="jump" class="touch action">ジャンプ</div>
+  <div id="break" class="touch action">こわす</div>
+  <div id="place" class="touch action">おく</div>
 </div>
 
 <div id="hud">
@@ -85,6 +110,8 @@ function drawHotbar(){
     const s=document.createElement("div");
     s.className="slot"+(i===selected?" sel":"");
     s.innerHTML=`<div><div class="swatch" style="background:#${b.color.toString(16).padStart(6,"0")}"></div><small>${i+1} ${b.name}</small></div>`;
+    s.style.pointerEvents="auto";
+    s.addEventListener("click",()=>{selected=i;drawHotbar();});
     hotbar.appendChild(s);
   });
 }
@@ -167,8 +194,10 @@ renderer.domElement.addEventListener("click",()=>{
   if(!locked) renderer.domElement.requestPointerLock();
 });
 document.addEventListener("pointerlockchange",()=>{
-  locked=document.pointerLockElement===renderer.domElement;
-  document.querySelector("#menu").style.display=locked?"none":"grid";
+  if(matchMedia("(pointer:fine)").matches){
+    locked=document.pointerLockElement===renderer.domElement;
+    document.querySelector("#menu").style.display=locked?"none":"grid";
+  }
 });
 document.addEventListener("mousemove",e=>{
   if(!locked) return;
@@ -177,6 +206,42 @@ document.addEventListener("mousemove",e=>{
   pitch=Math.max(-1.52,Math.min(1.52,pitch));
 });
 document.addEventListener("contextmenu",e=>e.preventDefault());
+
+
+const touchMove={x:0,z:0};
+let jumpTouch=false;
+const stick=document.querySelector("#stick"), knob=document.querySelector("#knob");
+function stickUpdate(t){
+  const r=stick.getBoundingClientRect();
+  let dx=t.clientX-(r.left+r.width/2), dy=t.clientY-(r.top+r.height/2);
+  const max=42, len=Math.hypot(dx,dy)||1;
+  if(len>max){dx=dx/len*max;dy=dy/len*max;}
+  knob.style.transform=`translate(${dx}px,${dy}px)`;
+  touchMove.x=dx/max; touchMove.z=dy/max;
+}
+stick.addEventListener("touchstart",e=>{e.preventDefault();stickUpdate(e.touches[0])},{passive:false});
+stick.addEventListener("touchmove",e=>{e.preventDefault();stickUpdate(e.touches[0])},{passive:false});
+function stickEnd(){touchMove.x=0;touchMove.z=0;knob.style.transform="translate(0,0)"}
+stick.addEventListener("touchend",stickEnd); stick.addEventListener("touchcancel",stickEnd);
+
+let lastLook=null;
+const look=document.querySelector("#look");
+look.addEventListener("touchstart",e=>{e.preventDefault();lastLook=e.touches[0]},{passive:false});
+look.addEventListener("touchmove",e=>{
+  e.preventDefault();
+  const t=e.touches[0];
+  if(lastLook){
+    yaw -= (t.clientX-lastLook.clientX)*.006;
+    pitch -= (t.clientY-lastLook.clientY)*.006;
+    pitch=Math.max(-1.52,Math.min(1.52,pitch));
+  }
+  lastLook=t;
+},{passive:false});
+look.addEventListener("touchend",()=>lastLook=null);
+
+const jumpBtn=document.querySelector("#jump");
+jumpBtn.addEventListener("touchstart",e=>{e.preventDefault();jumpTouch=true},{passive:false});
+jumpBtn.addEventListener("touchend",()=>jumpTouch=false);
 
 const raycaster=new THREE.Raycaster();
 raycaster.far=7;
@@ -197,6 +262,22 @@ document.addEventListener("mousedown",e=>{
     if(!playerIntersectsBlock(x,y,z)) addBlock(x,y,z,BLOCKS[selected].id);
   }
 });
+
+
+function mobileAction(place){
+  if(!locked) return;
+  const hit=aim(); if(!hit) return;
+  const d=hit.object.userData;
+  if(!place){
+    if(d.y>0) removeBlock(d.x,d.y,d.z);
+  }else{
+    const n=hit.face.normal;
+    const x=d.x+n.x,y=d.y+n.y,z=d.z+n.z;
+    if(!playerIntersectsBlock(x,y,z)) addBlock(x,y,z,BLOCKS[selected].id);
+  }
+}
+document.querySelector("#break").addEventListener("touchstart",e=>{e.preventDefault();mobileAction(false)},{passive:false});
+document.querySelector("#place").addEventListener("touchstart",e=>{e.preventDefault();mobileAction(true)},{passive:false});
 
 function playerIntersectsBlock(x,y,z){
   return player.pos.x+player.radius>x && player.pos.x-player.radius<x+1 &&
@@ -254,8 +335,20 @@ function flash(t){
   el.textContent=t;el.style.opacity=1;
   setTimeout(()=>el.style.opacity=0,1200);
 }
-document.querySelector("#start").onclick=()=>renderer.domElement.requestPointerLock();
-document.querySelector("#new").onclick=()=>{localStorage.removeItem("blockFrontierWorld");generateWorld();respawn();renderer.domElement.requestPointerLock();};
+document.querySelector("#start").onclick=()=>{
+  document.querySelector("#menu").style.display="none";
+  locked=true;
+  if(renderer.domElement.requestPointerLock && matchMedia("(pointer:fine)").matches){
+    renderer.domElement.requestPointerLock().catch?.(()=>{});
+  }
+};
+document.querySelector("#new").onclick=()=>{
+  localStorage.removeItem("blockFrontierWorld");generateWorld();respawn();
+  document.querySelector("#menu").style.display="none";locked=true;
+  if(renderer.domElement.requestPointerLock && matchMedia("(pointer:fine)").matches){
+    renderer.domElement.requestPointerLock().catch?.(()=>{});
+  }
+};
 document.querySelector("#save").onclick=saveWorld;
 
 const clock=new THREE.Clock();
@@ -268,13 +361,15 @@ function update(dt){
   if(keys.KeyS) wish.sub(forward);
   if(keys.KeyD) wish.add(right);
   if(keys.KeyA) wish.sub(right);
+  if(Math.abs(touchMove.z)>.08) wish.addScaledVector(forward,-touchMove.z);
+  if(Math.abs(touchMove.x)>.08) wish.addScaledVector(right,touchMove.x);
   if(wish.lengthSq()) wish.normalize();
 
   const accel=player.grounded?38:14;
   player.vel.x += (wish.x*5.3-player.vel.x)*Math.min(1,accel*dt);
   player.vel.z += (wish.z*5.3-player.vel.z)*Math.min(1,accel*dt);
   player.vel.y -= 20*dt;
-  if(keys.Space&&player.grounded){player.vel.y=7.4;player.grounded=false;}
+  if((keys.Space||jumpTouch)&&player.grounded){player.vel.y=7.4;player.grounded=false;jumpTouch=false;}
   player.grounded=false;
   moveAxis("x",player.vel.x*dt);
   moveAxis("z",player.vel.z*dt);
